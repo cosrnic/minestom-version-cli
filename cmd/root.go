@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"os"
 
-	"cosrnic.dev/minestom-version-cli/util"
+	"github.com/cosrnic/minestom-version-cli/util"
 	"github.com/spf13/cobra"
 )
 
