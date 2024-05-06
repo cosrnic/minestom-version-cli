@@ -5,6 +5,12 @@ A simple command line interface for getting the latest commit of Minestom or a b
 ## Installation
 
 ```shell
+go install github.com/cosrnic/minestom-version-cli@latest
+```
+
+or
+
+```shell
 git clone https://github.com/cosrnic/minestom-version-cli
 cd minestom-version-cli
 go install
