@@ -1,15 +1,17 @@
 package util
 
 type GHSuccessResponse struct {
-	Commit Commit `json:"commit"`
+	Sha     string   `json:"sha"`
+	Commit  Commit   `json:"commit"`
+	Parents []Parent `json:"parents"`
 }
 
+type Parent struct {
+	Sha string `json:"sha"`
+}
 type Commit struct {
-	Sha    string `json:"sha"`
-	Commit struct {
-		Author  Author `json:"author"`
-		Message string `json:"message"`
-	} `json:"commit"`
+	Author  Author `json:"author"`
+	Message string `json:"message"`
 }
 
 type Author struct {
@@ -20,4 +22,12 @@ type Author struct {
 
 type GHErrorResponse struct {
 	Message string `json:"message"`
+}
+
+type GHCheckRunsSuccessResponse struct {
+	CheckRuns []CheckRuns `json:"check_runs"`
+}
+
+type CheckRuns struct {
+	Conclusion string `json:"conclusion"`
 }

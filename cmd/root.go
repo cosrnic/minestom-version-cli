@@ -19,7 +19,7 @@ var root = &cobra.Command{
 
 var branchName string
 
-var baseURL string = "https://api.github.com/repos/Minestom/Minestom/branches/"
+var baseURL string = "https://api.github.com/repos/Minestom/Minestom/commits/"
 
 func Execute() {
 	err := root.Execute()
@@ -35,7 +35,11 @@ func init() {
 func Run(cobra *cobra.Command, args []string) {
 	fmt.Println("Getting latest Minestom version for branch " + branchName)
 
-	resp, err := http.Get(baseURL + branchName)
+	GetCommit(branchName)
+}
+
+func GetCommit(id string) {
+	resp, err := http.Get(baseURL + id)
 	if err != nil {
 		fmt.Printf("ERROR: Error making request %v", err)
 		os.Exit(1)
@@ -49,6 +53,40 @@ func Run(cobra *cobra.Command, args []string) {
 	case http.StatusNotFound:
 		Handle404(resp)
 	}
+}
+
+func SuccessfulCommit(data util.GHSuccessResponse) bool {
+
+	resp, err := http.Get(baseURL + data.Sha + "/check-runs")
+	if err != nil {
+		fmt.Printf("ERROR: Error making request %v", err)
+		os.Exit(1)
+	}
+
+	defer resp.Body.Close()
+	switch resp.StatusCode {
+	case http.StatusOK:
+		var apiResp util.GHCheckRunsSuccessResponse
+		err = json.NewDecoder(resp.Body).Decode(&apiResp)
+		if err != nil {
+			fmt.Printf("ERROR: Error reading body %v", err)
+			os.Exit(1)
+		}
+
+		for i := 0; i < len(apiResp.CheckRuns); i++ {
+			var run = apiResp.CheckRuns[i]
+
+			if run.Conclusion != "success" {
+				return false
+			}
+		}
+
+		return true
+	case http.StatusNotFound:
+		return false
+	}
+
+	return false
 
 }
 
@@ -60,12 +98,23 @@ func HandleOK(resp *http.Response) {
 		os.Exit(1)
 	}
 
+	var sha = apiResp.Sha
+
+	fmt.Println("Checking if commit " + sha + " is successful")
+	var successfulCommit = SuccessfulCommit(apiResp)
+
+	if !successfulCommit {
+		fmt.Println("Commit " + sha + " is not succesful")
+		GetCommit(apiResp.Parents[0].Sha)
+		return
+	}
+
 	fmt.Println(
-		apiResp.Commit.Sha[0:10]+" ("+apiResp.Commit.Sha+")",
+		sha[0:10]+" ("+sha+")",
 		"-",
-		apiResp.Commit.Commit.Message,
+		apiResp.Commit.Message,
 		"-",
-		apiResp.Commit.Commit.Author.Name,
+		apiResp.Commit.Author.Name,
 	)
 
 }
