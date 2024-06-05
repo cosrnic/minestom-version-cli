@@ -31,3 +31,7 @@ type GHCheckRunsSuccessResponse struct {
 type CheckRuns struct {
 	Conclusion string `json:"conclusion"`
 }
+
+type RateLimit struct {
+	Message string `json:"message"`
+}

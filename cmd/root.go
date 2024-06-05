@@ -2,11 +2,11 @@ package cmd
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"os"
 
 	"github.com/cosrnic/minestom-version-cli/util"
+	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 )
 
@@ -33,7 +33,7 @@ func init() {
 }
 
 func Run(cobra *cobra.Command, args []string) {
-	fmt.Println("Getting latest Minestom version for branch " + branchName)
+	color.Cyan("Getting latest Minestom version for branch " + branchName)
 
 	GetCommit(branchName)
 }
@@ -41,7 +41,8 @@ func Run(cobra *cobra.Command, args []string) {
 func GetCommit(id string) {
 	resp, err := http.Get(baseURL + id)
 	if err != nil {
-		fmt.Printf("ERROR: Error making request %v", err)
+		c := color.New(color.FgRed).Add(color.Bold)
+		c.Printf("ERROR: Error making request %v", err)
 		os.Exit(1)
 	}
 
@@ -50,16 +51,30 @@ func GetCommit(id string) {
 	switch resp.StatusCode {
 	case http.StatusOK:
 		HandleOK(resp)
+		return
 	case http.StatusNotFound:
 		Handle404(resp)
+		return
+	case http.StatusForbidden:
+		c := color.New(color.FgRed).Add(color.Bold)
+		var apiResp util.RateLimit
+		err = json.NewDecoder(resp.Body).Decode(&apiResp)
+		if err != nil {
+			c.Printf("ERROR: Error reading body %v", err)
+			os.Exit(1)
+		}
+		c.Printf("ERROR: Forbidden %v", apiResp.Message)
+		return
 	}
+
 }
 
 func SuccessfulCommit(data util.GHSuccessResponse) bool {
 
 	resp, err := http.Get(baseURL + data.Sha + "/check-runs")
 	if err != nil {
-		fmt.Printf("ERROR: Error making request %v", err)
+		c := color.New(color.FgRed).Add(color.Bold)
+		c.Printf("ERROR: Error making request %v", err)
 		os.Exit(1)
 	}
 
@@ -69,7 +84,8 @@ func SuccessfulCommit(data util.GHSuccessResponse) bool {
 		var apiResp util.GHCheckRunsSuccessResponse
 		err = json.NewDecoder(resp.Body).Decode(&apiResp)
 		if err != nil {
-			fmt.Printf("ERROR: Error reading body %v", err)
+			c := color.New(color.FgRed).Add(color.Bold)
+			c.Printf("ERROR: Error reading body %v", err)
 			os.Exit(1)
 		}
 
@@ -94,22 +110,26 @@ func HandleOK(resp *http.Response) {
 	var apiResp util.GHSuccessResponse
 	err := json.NewDecoder(resp.Body).Decode(&apiResp)
 	if err != nil {
-		fmt.Printf("ERROR: Error reading body %v", err)
+		c := color.New(color.FgRed).Add(color.Bold)
+		c.Printf("ERROR: Error reading body %v", err)
 		os.Exit(1)
 	}
 
 	var sha = apiResp.Sha
 
-	fmt.Println("Checking if commit " + sha + " is successful")
+	c := color.New(color.FgYellow)
+	c.Println("Checking if commit " + sha + " is successful")
 	var successfulCommit = SuccessfulCommit(apiResp)
 
 	if !successfulCommit {
-		fmt.Println("Commit " + sha + " is not succesful")
+		c = color.New(color.FgRed)
+		c.Println("Commit " + sha + " is not succesful")
 		GetCommit(apiResp.Parents[0].Sha)
 		return
 	}
 
-	fmt.Println(
+	c = color.New(color.FgGreen)
+	c.Println(
 		sha[0:10]+" ("+sha+")",
 		"-",
 		apiResp.Commit.Message,
@@ -122,10 +142,11 @@ func HandleOK(resp *http.Response) {
 func Handle404(resp *http.Response) {
 	var apiResp util.GHErrorResponse
 	err := json.NewDecoder(resp.Body).Decode(&apiResp)
+	c := color.New(color.FgRed).Add(color.Bold)
 	if err != nil {
-		fmt.Printf("ERROR: Error reading body %v", err)
+		c.Printf("ERROR: Error reading body %v", err)
 		os.Exit(1)
 	}
 
-	fmt.Printf("ERROR: %v", apiResp.Message)
+	c.Printf("ERROR: %v", apiResp.Message)
 }
